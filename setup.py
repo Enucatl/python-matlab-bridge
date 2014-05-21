@@ -25,7 +25,7 @@ if sys.platform == "darwin":
     if not copy_bin("./messenger/mexmaci64/messenger.mexmaci64"):
         raise ValueError("messenger.mexmaci64 is not built yet. Please build it yourself.")
 
-elif sys.platform == "linux2":
+elif sys.platform == "linux2" or sys.platform == "linux":
     if not copy_bin("./messenger/mexa64/messenger.mexa64"):
         raise ValueError("messenger.mexa64 is not built yet. Please build it yourself.")
 

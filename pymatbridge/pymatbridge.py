@@ -120,8 +120,8 @@ class Matlab(object):
     # Start server/client session and make the connection
     def start(self):
         # Start the MATLAB server in a new process
-        print "Starting MATLAB on ZMQ socket %s" % (self.socket_addr)
-        print "Send 'exit' command to kill the server"
+        print("Starting MATLAB on ZMQ socket %s" % (self.socket_addr))
+        print("Send 'exit' command to kill the server")
         _run_matlab_server(self.matlab, self.socket_addr, self.log, self.id, self.startup_options)
 
         # Start the client
@@ -133,22 +133,22 @@ class Matlab(object):
 
         # Test if connection is established
         if (self.is_connected()):
-            print "MATLAB started and connected!"
+            print("MATLAB started and connected!")
             return True
         else:
-            print "MATLAB failed to start"
+            print("MATLAB failed to start")
             return False
 
 
     # Stop the Matlab server
     def stop(self):
         req = json.dumps(dict(cmd="exit"), cls=ComplexEncoder)
-        self.socket.send(req)
+        self.socket.send_string(req)
         resp = self.socket.recv_string()
 
         # Matlab should respond with "exit" if successful
         if resp == "exit":
-            print "MATLAB closed"
+            print("MATLAB closed")
 
         self.started = False
         return True
@@ -160,7 +160,7 @@ class Matlab(object):
             return False
 
         req = json.dumps(dict(cmd="connect"), cls=ComplexEncoder)
-        self.socket.send(req)
+        self.socket.send_string(req)
 
         start_time = time.time()
         while(True):
@@ -174,7 +174,7 @@ class Matlab(object):
                 np.disp(".", linefeed=False)
                 time.sleep(1)
                 if (time.time() - start_time > self.maxtime) :
-                    print "Matlab session timed out after %d seconds" % (self.maxtime)
+                    print("Matlab session timed out after %d seconds" % (self.maxtime))
                     return False
 
 
@@ -196,7 +196,7 @@ class Matlab(object):
         req['func_args'] = func_args
 
         req = json.dumps(req, cls=ComplexEncoder)
-        self.socket.send(req)
+        self.socket.send_string(req)
         resp = self.socket.recv_string()
         resp = json.loads(resp, object_hook=as_complex)
 
@@ -210,7 +210,7 @@ class Matlab(object):
         req = dict(cmd="run_code")
         req['code'] = code
         req = json.dumps(req, cls=ComplexEncoder)
-        self.socket.send(req)
+        self.socket.send_string(req)
         resp = self.socket.recv_string()
         resp = json.loads(resp, object_hook=as_complex)
 
@@ -223,7 +223,7 @@ class Matlab(object):
         req = dict(cmd="get_var")
         req['varname'] = varname
         req = json.dumps(req, cls=ComplexEncoder)
-        self.socket.send(req)
+        self.socket.send_string(req)
         resp = self.socket.recv_string()
         resp = json.loads(resp, object_hook=as_complex)
 
