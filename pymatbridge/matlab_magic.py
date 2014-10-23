@@ -17,7 +17,6 @@ import tempfile
 from glob import glob
 from shutil import rmtree
 from getopt import getopt
-from urllib2 import URLError
 
 import numpy as np
 try:
@@ -28,6 +27,10 @@ except ImportError:
     no_io_str = "Must have scipy.io to perform i/o"
     no_io_str += "operations with the Matlab session"
 
+import IPython
+
+ipython_version = int(IPython.__version__[0])
+
 from IPython.core.displaypub import publish_display_data
 from IPython.core.magic import (Magics, magics_class, cell_magic, line_magic,
                                 line_cell_magic, needs_local_scope)
@@ -37,6 +40,7 @@ from IPython.core.magic_arguments import (argument, magic_arguments,
 from IPython.utils.py3compat import str_to_unicode, unicode_to_str, PY3
 
 import pymatbridge as pymat
+from .compat import text_type
 
 
 class MatlabInterperterError(RuntimeError):
@@ -56,7 +60,7 @@ class MatlabInterperterError(RuntimeError):
         __str__ = __unicode__
     else:
         def __str__(self):
-            return unicode_to_str(unicode(self), 'utf-8')
+            return unicode_to_str(text_type(self), 'utf-8')
 
 
 
@@ -114,7 +118,7 @@ class MatlabMagics(Magics):
         """
         Parse and evaluate a single line of matlab
         """
-        run_dict = self.Matlab.run_code(line, maxtime=self.Matlab.maxtime)
+        run_dict = self.Matlab.run_code(line)
 
         if run_dict['success'] == 'false':
             raise MatlabInterperterError(line, run_dict['content']['stdout'])
@@ -126,9 +130,7 @@ class MatlabMagics(Magics):
         """
         Set up a variable in Matlab workspace
         """
-        run_dict = self.Matlab.run_func("pymat_set_variable.m",
-                                        {'name':name, 'value':value},
-                                        maxtime=self.Matlab.maxtime)
+        run_dict = self.Matlab.set_variable(name, value)
 
         if run_dict['success'] == 'false':
             raise MatlabInterperterError(line, run_dict['content']['stdout'])
@@ -191,11 +193,9 @@ class MatlabMagics(Magics):
                         val = local_ns[input]
                     except KeyError:
                         val = self.shell.user_ns[input]
-
-                    # To make an array JSON serializable
-                    if (isinstance(val, np.ndarray)):
-                        val = val.tolist()
-
+                    # The _Session.set_variable function which this calls
+                    # should correctly detect numpy arrays and serialize them
+                    # as json correctly.
                     self.set_matlab_var(input, val)
 
             else:
@@ -211,7 +211,7 @@ class MatlabMagics(Magics):
             else:
                 e_s = "There was an error running the code:\n %s"%code
                 result_dict = self.eval(code)
-        except URLError:
+        except:
             e_s += "\n-----------------------"
             e_s += "\nAre you sure Matlab is started?"
             raise RuntimeError(e_s)
@@ -225,19 +225,28 @@ class MatlabMagics(Magics):
 
         display_data = []
         if text_output and not args.silent:
-            display_data.append(('MatlabMagic.matlab',
-                                 {'text/plain':text_output}))
+            if ipython_version < 3:
+                display_data.append(('MatlabMagic.matlab',
+                                     {'text/plain':text_output}))
+            else:
+                display_data.append({'text/plain':text_output})
 
         for imgf in imgfiles:
             if len(imgf):
                 # Store the path to the directory so that you can delete it
                 # later on:
                 image = open(imgf, 'rb').read()
-                display_data.append(('MatlabMagic.matlab',
-                                     {'image/png': image}))
+                if ipython_version < 3:
+                    display_data.append(('MatlabMagic.matlab',
+                                         {'image/png':image}))
+                else:
+                    display_data.append({'image/png': image})
 
-        for tag, disp_d in display_data:
-            publish_display_data(tag, disp_d)
+        for disp_d in display_data:
+            if ipython_version < 3:
+                publish_display_data(disp_d[0], disp_d[1])
+            else:
+                publish_display_data(disp_d)
 
         # Delete the temporary data files created by matlab:
         if len(data_dir):

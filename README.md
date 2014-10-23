@@ -32,18 +32,41 @@ are listed below.
 If you specified a prefix when installing zmq, the library file should be located at the
 same prefix location.
 
-After the library file is located, you need to add it to dynamic loader path on your 
-machine. On MacOS, you can do this by adding the following line to your .bash_profile:
+The pymatbridge MEX extension needs to be able to locate the zmq library. If it's in a
+standard location, you may not need to do anything; if not, there are two ways to
+accomplish this:
+
+#### Using the dynamic loader path
+
+One option is to set an environment variable which will point the loader to the right
+directory.
+
+On MacOS, you can do this by adding the following line to your .bash_profile (or similar
+file for your shell):
 
 	export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<Path to your zmq lib directory>
 
-On Linux, add the following line to your .bash_profile:
+On Linux, add the following line to your .bash_profile (or similar file for your shell):
 
 	export LD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<Path to your zmq lib directory>
 
 On Windows, add the install location of libzmq.dll to the PATH environment variable.
 On Windows 7+, typing "environment variables" into the start menu will bring up the
 apporpriate Control Panel links.
+
+#### Pointing the binary at the right place
+
+Another option is to modify the MEX binary to point to the right location. This is
+preferable in that it doesn't change loader behavior for other libraries than just
+the pymatbridge messenger.
+
+On MacOS, you can do this from the root of the pymatbridge code with:
+
+	install_name_tool -change /usr/local/lib/libzmq.3.dylib <Path to your zmq lib directory>/libzmq.3.dylib messenger/maci64/messenger.mexmaci64
+
+On Linux, you can add it to the RPATH:
+
+        patchelf --set-rpath <Path to your zmq lib directory> messenger/mexa64/messenger.mexa64
 	
 ### Install pyzmq
 After step 1 is finished, please grab the latest version of 
@@ -62,7 +85,7 @@ This should make the python-matlab-bridge import-able.
 
 ## Usage
 
-To use the pymatbridge you need to connect your python interperter to a Matlab
+To use the pymatbridge you need to connect your python interpreter to a Matlab
 session. This is done in the following manner:
 
     from pymatbridge import Matlab
@@ -72,12 +95,12 @@ This creates a matlab session class instance, into which you will be able to
 inject code and variables, and query for results. By default, when you use
 `start`, this will open whatever gets called when you type `matlab`
 in your Terminal, but you can also specify the location of your Matlab
-application when initialzing your matlab session class:  
+application when initializing your matlab session class:  
 
-    mlab = Matlab(matlab='/Applications/MATLAB_R2011a.app/bin/matlab')
+    mlab = Matlab(executable='/Applications/MATLAB_R2011a.app/bin/matlab')
 	  
 You can then start the Matlab server, which will kick off your matlab session,
-and create the connection between your Python interperter and this session:
+and create the connection between your Python interpreter and this session:
 
     mlab.start()
 
@@ -99,7 +122,7 @@ the `get_variable` method:
 
     mlab.get_variable('a')
  
-You can  run any MATLAB functions contained within a .m file of the
+You can run any MATLAB functions contained within a .m file of the
 same name. For example, to call the function jk in jk.m:
 
     %% MATLAB
@@ -112,7 +135,7 @@ same name. For example, to call the function jk in jk.m:
 you would call:
 
     res = mlab.run_func('path/to/jk.m', {'arg1': 3, 'arg2': 5})
-    print res['result']
+    print(res['result'])
 
 This would print `8`.
 
@@ -123,6 +146,37 @@ You can shut down the MATLAB server by calling:
 Tip: you can execute MATLAB code at the beginning of each of your matlab
 sessions by adding code to the `~/startup.m` file.
 
+### Octave support & caveats
+
+A `pymatbridge.Octave` class is provided with exactly the same interface
+as `pymatbridge.Matlab`:
+
+    from pymatbridge import Octave
+    octave = Octave()
+
+Rather than looking for `matlab` at the shell, this will look for `octave`.
+As with `pymatbridge.Matlab`, you can override this by specifying the
+`executable` keyword argument.
+
+There are a few caveats to note about Octave support:
+
+* `pymatbridge.Matlab` invokes MATLAB with command line options that suppress
+the display of figures -- these are instead saved to image files, accessible
+via `results['content']['figures']` in the results dict. No such mechanism
+seems to be available for Octave, so when drawing figures you'll likely see
+them briefly pop up and disappear. (If you know of a way around this, feel
+free to send a pull request).
+* The zmq messenger used to communicate with the Octave session is written in C
+and needs to be compiled. For MATLAB various prebuilt binaries are provided
+and added to MATLAB's runtime path, but as of this writing the same isn't
+true for Octave. You'll need to compile the messenger (in
+`messenger/src/messenger.c`) using an incantation like
+`mkoctfile --mex -lzmq messenger.c` and place the resulting `messenger.mex`
+file somewhere in Octave's runtime path.
+
+Finally, rather than `~/startup.m`, Octave looks for an `~/.octaverc` file for
+commands to execute before every session. (This is a good place to manipulate
+the runtime path, for example).
 
 ### Matlab magic: 
 

@@ -3,12 +3,12 @@ function matlabserver(socket_address)
 % over the socket. I then enters the listen-respond mode until it gets an
 % "exit" command
 
-json.startup
+json_startup
 messenger('init', socket_address);
 
 while(1)
     msg_in = messenger('listen');
-    req = json.load(msg_in);
+    req = json_load(msg_in);
 
     switch(req.cmd)
         case {'connect'}
@@ -20,18 +20,15 @@ while(1)
             break;
 
         case {'run_function'}
-            fhandle = str2func('pymat_feval');
-            resp = feval(fhandle, req);
+            resp = pymat_feval(req);
             messenger('respond', resp);
 
         case {'run_code'}
-            fhandle = str2func('pymat_eval');
-            resp = feval(fhandle, req);
+            resp = pymat_eval(req);
             messenger('respond', resp);
 
         case {'get_var'}
-            fhandle = str2func('pymat_get_variable');
-            resp = feval(fhandle, req);
+            resp = pymat_get_variable(req);
             messenger('respond', resp);
 
         otherwise

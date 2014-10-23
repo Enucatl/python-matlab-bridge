@@ -1,14 +1,13 @@
-function json_response = web_eval(req);
-%WEB_EVAL: Returns a json object of the result of calling the function
+function json_response = pymat_eval(req);
+% PYMAT_EVAL: Returns a json object of the result of calling the function
 %
-% json_response = WEB_EVAL(headers);
-% json_response = WEB_EVAL(headers, config);
+% json_response = pymat_eval(req);
 %
-%   This allows you to run any matlab code. To be used with webserver.m.
-%   HTTP POST to /web_eval.m with the following parameters:
+%   This allows you to run any matlab code. req should be a struct with the
+%   following fields:
 %       code: a string which contains the code to be run in the matlab session
 %
-%   Should return a json object containing the result
+%   Should return a json object containing the result.
 %
 % Based on Max Jaderberg's web_feval
 
@@ -26,7 +25,7 @@ end
 
 if ~code_check
 	response.message = 'No code provided as POST parameter';
-	json_response = json.dump(response);
+	json_response = json_dump(response);
 	return;
 end
 
@@ -71,6 +70,6 @@ end
 
 response.content.code = code;
 
-json_response = json.dump(response);
+json_response = json_dump(response);
 
 end %function

@@ -1,4 +1,5 @@
 import pymatbridge as pymat
+from pymatbridge.compat import text_type
 import numpy.testing as npt
 import test_utils as tu
 
@@ -23,7 +24,10 @@ class TestRunCode:
 
         npt.assert_equal(result1, "Hello world\n")
         npt.assert_equal(result2, "   \n")
-        npt.assert_equal(result3, "")
+        if tu.on_octave():
+            npt.assert_equal(result3, '\n')
+        else:
+            npt.assert_equal(result3, "")
 
     # Make some assignments and run basic operations
     def test_basic_operation(self):
@@ -34,13 +38,20 @@ class TestRunCode:
         result_product = self.mlab.run_code("a * b")['content']['stdout']
         result_division = self.mlab.run_code("c = a / b")['content']['stdout']
 
-
-        npt.assert_equal(result_assignment_a, unicode("\na =\n\n   21.2345\n\n"))
-        npt.assert_equal(result_assignment_b, unicode("\nb =\n\n  347.7450\n\n"))
-        npt.assert_equal(result_sum, unicode("\nans =\n\n  368.9795\n\n"))
-        npt.assert_equal(result_diff, unicode("\nans =\n\n -326.5105\n\n"))
-        npt.assert_equal(result_product, unicode("\nans =\n\n   7.3842e+03\n\n"))
-        npt.assert_equal(result_division, unicode("\nc =\n\n    0.0611\n\n"))
+        if tu.on_octave():
+            npt.assert_equal(result_assignment_a, text_type("a =  21.235\n"))
+            npt.assert_equal(result_assignment_b, text_type("b =  347.75\n"))
+            npt.assert_equal(result_sum, text_type("ans =  368.98\n"))
+            npt.assert_equal(result_diff, text_type("ans = -326.51\n"))
+            npt.assert_equal(result_product, text_type("ans =  7384.2\n"))
+            npt.assert_equal(result_division, text_type("c =  0.061063\n"))
+        else:
+            npt.assert_equal(result_assignment_a, text_type("\na =\n\n   21.2345\n\n"))
+            npt.assert_equal(result_assignment_b, text_type("\nb =\n\n  347.7450\n\n"))
+            npt.assert_equal(result_sum, text_type("\nans =\n\n  368.9795\n\n"))
+            npt.assert_equal(result_diff, text_type("\nans =\n\n -326.5105\n\n"))
+            npt.assert_equal(result_product, text_type("\nans =\n\n   7.3842e+03\n\n"))
+            npt.assert_equal(result_division, text_type("\nc =\n\n    0.0611\n\n"))
 
     # Put in some undefined code
     def test_undefined_code(self):
@@ -48,4 +59,7 @@ class TestRunCode:
         message = self.mlab.run_code("this_is_nonsense")['content']['stdout']
 
         npt.assert_equal(success, "false")
-        npt.assert_equal(message, "Undefined function or variable 'this_is_nonsense'.")
+        if tu.on_octave():
+            npt.assert_equal(message, "'this_is_nonsense' undefined near line 1 column 1")
+        else:
+            npt.assert_equal(message, "Undefined function or variable 'this_is_nonsense'.")
